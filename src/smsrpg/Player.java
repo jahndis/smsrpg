@@ -5,12 +5,16 @@ import java.sql.SQLException;
 import java.util.Stack;
 import java.util.UUID;
 
+import sqlitedb.Column;
+import sqlitedb.ColumnRule;
+import sqlitedb.DataType;
+import sqlitedb.SQLiteDatabase;
+
 import log.Log;
 
 
 import com.techventus.server.voice.datatypes.Contact;
 
-import db.SQLiteDatabase;
 
 public class Player {
 	
@@ -157,12 +161,15 @@ public class Player {
 	}
 	
 	public static void createPlayerTableInDatabase() {
-		String[] columnNames = {"id", "name", "phone_number", "state"};
-		String[] columnTypes = {"blob", "blob", "blob", "blob"};
-		String[] columnRules = {"primary key not null unique", "not null unique", "not null unique", "not null"};
+		Column[] columns = {
+			new Column("id", DataType.BLOB, new ColumnRule[] {ColumnRule.PRIMARY_KEY, ColumnRule.NOT_NULL, ColumnRule.UNIQUE}),
+			new Column("name", DataType.BLOB, new ColumnRule[] {ColumnRule.NOT_NULL, ColumnRule.UNIQUE}),
+			new Column("phone_number", DataType.BLOB, new ColumnRule[] {ColumnRule.NOT_NULL, ColumnRule.UNIQUE}),
+			new Column("state", DataType.BLOB, new ColumnRule[] {ColumnRule.NOT_NULL})
+		};
 		
 		SQLiteDatabase.openConnection();
-		SQLiteDatabase.createTable("players", columnNames, columnTypes, columnRules);
+		SQLiteDatabase.createTable("players", columns);
 		SQLiteDatabase.closeConnection();
 	}
 	

@@ -1,5 +1,7 @@
-package db;
+package sqlitedb;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -14,7 +16,6 @@ public class SQLiteDatabase {
 	
 	private static String name;
 	private static String location;
-	
 	private static Connection connection;
 	
 	public static void init(String name, String location) {
@@ -28,6 +29,17 @@ public class SQLiteDatabase {
 		
 		SQLiteDatabase.name = name;
 		SQLiteDatabase.location = location;
+		
+		//Create the database file if it doesn't exist
+		File file = new File(location + "/" + name); 
+		if (!file.exists()) { 
+		  try { 
+		    file.createNewFile(); 
+		    Log.log("Creating database file");
+		  } catch(IOException e) { 
+		    e.printStackTrace(); 
+		  } 
+		}
 	}
 	
 	public static void openConnection() {
@@ -79,10 +91,8 @@ public class SQLiteDatabase {
 	}
 	
 	
-	public static void createTable(String tableName, String[] columnNames, String[] columnTypes, String[] columnRules) {
+	public static void createTable(String tableName, Column[] columns) {
 		try {
-			if (columnNames.length != columnTypes.length || columnNames.length != columnRules.length) throw new IllegalArgumentException();
-			
 			Statement statement = connection.createStatement();
 			
 			//Delete the table from the database
@@ -91,8 +101,8 @@ public class SQLiteDatabase {
 			//Build the table creation string
 			StringBuilder builder = new StringBuilder();
 			builder.append("create table " + tableName + " (");
-			for (int i = 0; i < columnNames.length; i++) {
-				builder.append(columnNames[i] + " " + columnTypes[i] + " " + columnRules[i] + ",");
+			for (int i = 0; i < columns.length; i++) {
+				builder.append(columns[i].getName() + " " + columns[i].getTypeAsString() + " " + columns[i].getRulesAsString() + ",");
 			}
 			//Get rid of the extra comma
 			builder.deleteCharAt(builder.length() - 1);
@@ -102,9 +112,6 @@ public class SQLiteDatabase {
 			statement.executeUpdate(builder.toString());
 		} catch (SQLException e) {
 			Log.error("Error creating new table " + tableName);
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			Log.error("Lengths of column names, types, and rules arrays are not equal");
 			e.printStackTrace();
 		}
 	}

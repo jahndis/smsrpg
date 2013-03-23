@@ -3,6 +3,8 @@ package smsrpg;
 import java.io.IOException;
 import java.util.Collection;
 
+import sqlitedb.SQLiteDatabase;
+
 import log.Log;
 
 
@@ -10,7 +12,6 @@ import com.techventus.server.voice.Voice;
 import com.techventus.server.voice.datatypes.records.SMS;
 import com.techventus.server.voice.datatypes.records.SMSThread;
 
-import db.SQLiteDatabase;
 
 public class SMSRPG {
 

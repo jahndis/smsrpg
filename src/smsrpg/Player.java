@@ -1,22 +1,30 @@
 package smsrpg;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Stack;
 import java.util.UUID;
 
-import sqlitedb.Column;
+import sqlitedb.ColumnDefinition;
 import sqlitedb.ColumnRule;
 import sqlitedb.DataType;
+import sqlitedb.DatabaseResult;
+import sqlitedb.TableDefinition;
 import sqlitedb.SQLiteDatabase;
 
 import log.Log;
-
 
 import com.techventus.server.voice.datatypes.Contact;
 
 
 public class Player {
+
+	private static final TableDefinition PLAYERS_TABLE = new TableDefinition(
+			"players", 
+			new ColumnDefinition[] {
+					new ColumnDefinition("id", DataType.BLOB, new ColumnRule[] { ColumnRule.PRIMARY_KEY, ColumnRule.NOT_NULL, ColumnRule.UNIQUE }),
+					new ColumnDefinition("name", DataType.BLOB, new ColumnRule[] { ColumnRule.NOT_NULL, ColumnRule.UNIQUE }),
+					new ColumnDefinition("phone_number", DataType.BLOB, new ColumnRule[] { ColumnRule.NOT_NULL, ColumnRule.UNIQUE }),
+					new ColumnDefinition("state", DataType.BLOB, new ColumnRule[] { ColumnRule.NOT_NULL })
+			});
 	
 	private Contact contact;
 	
@@ -47,7 +55,7 @@ public class Player {
 	 */
 	public void performAction(String message, World world) {
 		if (state.isEmpty()) {
-			Log.error("The player stack is empty.");
+			Log.error("The player's state stack is empty.");
 			throw new IllegalStateException();
 		}
 		
@@ -161,15 +169,10 @@ public class Player {
 	}
 	
 	public static void createPlayerTableInDatabase() {
-		Column[] columns = {
-			new Column("id", DataType.BLOB, new ColumnRule[] {ColumnRule.PRIMARY_KEY, ColumnRule.NOT_NULL, ColumnRule.UNIQUE}),
-			new Column("name", DataType.BLOB, new ColumnRule[] {ColumnRule.NOT_NULL, ColumnRule.UNIQUE}),
-			new Column("phone_number", DataType.BLOB, new ColumnRule[] {ColumnRule.NOT_NULL, ColumnRule.UNIQUE}),
-			new Column("state", DataType.BLOB, new ColumnRule[] {ColumnRule.NOT_NULL})
-		};
+		
 		
 		SQLiteDatabase.openConnection();
-		SQLiteDatabase.createTable("players", columns);
+		SQLiteDatabase.createTable(Player.PLAYERS_TABLE);
 		SQLiteDatabase.closeConnection();
 	}
 	
@@ -178,16 +181,13 @@ public class Player {
 		
 		SQLiteDatabase.openConnection();
 		
-		ResultSet rs = SQLiteDatabase.executeQuery("select name, state from players where phone_number = '" + getNumber() + "'");
-		try {
-			if (rs.next()) {
-				this.userName = rs.getString("name");
-				this.state = stateTextToStateStack(rs.getString("state"));
-			}
-			rs.close();
-		} catch (SQLException e) {
-			Log.error("Error loading player information.");
-			e.printStackTrace();
+		String statement = "SELECT name, state FROM players WHERE phone_number = ?";
+		Object[] values = { getNumber() };
+		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
+		
+		if (!result.isEmpty()) {
+			this.userName = (String) result.getRow(0).getValue("name");
+			this.state = stateTextToStateStack((String) result.getRow(0).getValue("state"));
 		}
 		
 		SQLiteDatabase.closeConnection();
@@ -206,17 +206,14 @@ public class Player {
 		
 		SQLiteDatabase.openConnection();
 		
-		ResultSet rs = SQLiteDatabase.executeQuery("select phone_number from players where phone_number = '" + getNumber() + "'");
-		try {
-			if (rs.next()) {
-				registered = true;
-			}
-			rs.close();
-		} catch (SQLException e) {
-			Log.error("Error checking player registration.");
-			e.printStackTrace();
-		}
+		String statement = "SELECT phone_number FROM players WHERE phone_number = ?";
+		Object[] values = { getNumber() };
+		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
 		
+		if (!result.isEmpty()) {
+			registered = true;
+		}
+
 		SQLiteDatabase.closeConnection();
 		
 		return registered;
@@ -227,15 +224,11 @@ public class Player {
 		
 		SQLiteDatabase.openConnection();
 		
-		ResultSet rs = SQLiteDatabase.executeQuery("select name from players where name = '" + name + "'");
-		try {
-			if (rs.next()) {
-				nameTaken = true;
-			}
-			rs.close();
-		} catch (SQLException e) {
-			Log.error("Error checking if user name is taken.");
-			e.printStackTrace();
+		String statement = "SELECT name FROM players WHERE name = ?";
+		Object[] values = { name };
+		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
+		if (!result.isEmpty()) {
+			nameTaken = true;
 		}
 		
 		SQLiteDatabase.closeConnection();

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -12,46 +13,27 @@ import java.util.ArrayList;
 
 import log.Log;
 
-public class SQLiteDatabase {
+public final class SQLiteDatabase {
 	
 	private static String name;
 	private static String location;
 	private static Connection connection;
 	
 	public static void init(String name, String location) {
-		//Check for JDBC class
-		try {
-			Class.forName("org.sqlite.JDBC");
-		} catch (ClassNotFoundException e) {
-			Log.error("JDBC class was not found.");
-			e.printStackTrace();
-		}
-		
 		SQLiteDatabase.name = name;
 		SQLiteDatabase.location = location;
 		
-		//Create the database file if it doesn't exist
-		File file = new File(location + "/" + name); 
-		if (!file.exists()) { 
-		  try { 
-		    file.createNewFile(); 
-		    Log.log("Creating database file");
-		  } catch(IOException e) { 
-		    e.printStackTrace(); 
-		  } 
-		}
+		checkForJDBCClass();
+		createDatabaseFile();
 	}
 	
 	public static void openConnection() {
-		//Open connection to the database
 		try {
-			if (connection == null) {
-				connection = DriverManager.getConnection("jdbc:sqlite:" + location + "/" + name);
-			} else if (connection.isClosed()) {
+			if (connection == null || connection.isClosed()) {
 				connection = DriverManager.getConnection("jdbc:sqlite:" + location + "/" + name);
 			}
 		} catch (SQLException e) {
-			Log.error("Error getting SQL database connection.");
+			Log.error("Error getting SQL database connection");
 			e.printStackTrace();
 		}
 	}
@@ -60,104 +42,183 @@ public class SQLiteDatabase {
 		try {
 			connection.close();
 		} catch (SQLException e) {
-			Log.error("Error closing SQL database connection.");
+			Log.error("Error closing SQL database connection");
 			e.printStackTrace();
 		}
 	} 
 	
-	public static ResultSet executeQuery(String sql) {
-		ResultSet result = null;
-		
+	public static boolean isConnected() {
 		try {
-			Statement statement = connection.createStatement();
-			result = statement.executeQuery(sql);
-			
-		} catch (SQLException e) {
-			Log.error("Error executing query: " + sql);
-			e.printStackTrace();
-		}
-		
-		return result;
-	}
-	
-	public static void executeUpdate(String sql) {
-		try {
-			Statement statement = connection.createStatement();
-			statement.executeUpdate(sql);
-		} catch (SQLException e) {
-			Log.error("Error executing update: " + sql);
-			e.printStackTrace();
-		}
-	}
-	
-	
-	public static void createTable(String tableName, Column[] columns) {
-		try {
-			Statement statement = connection.createStatement();
-			
-			//Delete the table from the database
-			statement.executeUpdate("drop table if exists " + tableName + ";");
-			
-			//Build the table creation string
-			StringBuilder builder = new StringBuilder();
-			builder.append("create table " + tableName + " (");
-			for (int i = 0; i < columns.length; i++) {
-				builder.append(columns[i].getName() + " " + columns[i].getTypeAsString() + " " + columns[i].getRulesAsString() + ",");
+			if (connection != null) {
+				return !connection.isClosed();
 			}
-			//Get rid of the extra comma
-			builder.deleteCharAt(builder.length() - 1);
-			builder.append(");");
-			
-			//Create the table in the database
-			statement.executeUpdate(builder.toString());
 		} catch (SQLException e) {
-			Log.error("Error creating new table " + tableName);
+			Log.error("Error testing for database connection");
+			e.printStackTrace();
+		}
+		return false;
+	}
+	
+	public static DatabaseResult executeQuery(String statement, Object[] values) {
+		PreparedStatement preparedStatement = null;
+		DatabaseResult result = null;
+
+    try {
+    	preparedStatement = connection.prepareStatement(statement);   
+    	
+      for (int i = 0; i < values.length; i++) {
+      	preparedStatement.setObject(i+1, values[i]);
+      }
+   
+      result = new DatabaseResult(preparedStatement.executeQuery());
+    } catch (SQLException e) {
+    	Log.error("Error executing query");
+      e.printStackTrace();
+    } finally {
+      closePreparedStatement(preparedStatement);
+    }
+    
+    return result;
+	}
+	
+	public static DatabaseResult executeQuery(String statement) {
+    return executeQuery(statement, new Object[] { });
+	}
+	
+	public static void executeUpdate(String statement, Object[] values) {
+		PreparedStatement preparedStatement = null;
+		
+    try {
+      preparedStatement = connection.prepareStatement(statement);
+      
+      for (int i = 0; i < values.length; i++) {
+      	preparedStatement.setObject(i+1, values[i]);
+      }
+      
+      preparedStatement.executeUpdate();
+    } catch (SQLException e) {
+    	Log.error("Error executing update");
+      e.printStackTrace();
+    } finally {
+    	closePreparedStatement(preparedStatement);
+    }
+	}
+	
+	public static void executeUpdate(String statement) {
+    executeUpdate(statement, new Object[] { });
+	}
+	
+	public static void createTable(TableDefinition tableDefinition) {
+		try {
+			if (hasTable(tableDefinition.getName())) {
+				throw new SQLException("Table " + tableDefinition.getName() + " has already been created");
+			}
+			
+			Table table = new Table(tableDefinition);
+			table.create();
+		} catch (SQLException e) {
+			Log.error("Error creating table in database");
 			e.printStackTrace();
 		}
 	}
 	
 	
 	public static boolean hasTable(String tableName) {
+		ResultSet rs = null;
+		boolean hasTable = false;
+		
 		try {
 			DatabaseMetaData metadata = connection.getMetaData();
-			ResultSet rs = metadata.getTables(null, null, "%", null);
+			rs = metadata.getTables(null, null, "%", null);
 			
 			while (rs.next()) {
 				if (rs.getString("TABLE_NAME").equals(tableName)) {
-					rs.close();
-					return true;
+					hasTable = true;
+					break;
 				}
 			}
-			
-			rs.close();
 		} catch (SQLException e) {
-			Log.error("Error checking if table " + tableName + " exists in database.");
+			Log.error("Error checking if table " + tableName + " exists in database");
 			e.printStackTrace();
+		} finally {
+			closeResultSet(rs);
 		}
 		
-		return false;
+		return hasTable;
 	}
 	
 	public static void dropAllTables() {
+		ResultSet rs = null;
+		
 		try {
 			DatabaseMetaData metadata = connection.getMetaData();
-			ResultSet rs = metadata.getTables(null, null, "%", null);
+			rs = metadata.getTables(null, null, "%", null);
 			
 			ArrayList<String> tableNames = new ArrayList<String>();
 			while (rs.next()) {
 				tableNames.add(rs.getString("TABLE_NAME"));
 			}
-			rs.close();
 			
 			Statement statement = connection.createStatement();
 			for (String tableName : tableNames) {
-				statement.executeUpdate("drop table if exists " + tableName + ";");
+				statement.executeUpdate("DROP TABLE IF EXISTS " + tableName);
 			}
 			
 		} catch (SQLException e) {
-			Log.error("Error dropping all tables.");
+			Log.error("Error dropping all tables");
+			e.printStackTrace();
+		} finally {
+			closeResultSet(rs);
+		}
+	}
+	
+	
+	/* Private Methods */
+	
+	private static void checkForJDBCClass() {
+		try {
+			Class.forName("org.sqlite.JDBC");
+		} catch (ClassNotFoundException e) {
+			Log.error("JDBC class was not found");
 			e.printStackTrace();
 		}
+	}
+	
+	private static void createDatabaseFile() {
+		String filePath = location + "/" + name;
+		
+		File file = new File(filePath); 
+		if (!file.exists()) { 
+		  try { 
+		    file.createNewFile(); 
+		    Log.log("Creating database file: " + filePath);
+		  } catch(IOException e) { 
+		  	Log.error("Error creating database file " + filePath);
+		    e.printStackTrace(); 
+		  } 
+		}
+	}
+	
+	private static void closeResultSet(ResultSet resultSet) {
+		if (resultSet != null) {
+			try {
+				resultSet.close();
+			} catch (SQLException e) {
+				Log.error("Error closing result set");
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	private static void closePreparedStatement(PreparedStatement statement) {
+		if (statement != null) {
+    	try {
+    		statement.close();
+			} catch (SQLException e) {
+				Log.error("Error closing prepared statement");
+				e.printStackTrace();
+			}
+    }
 	}
 	
 }

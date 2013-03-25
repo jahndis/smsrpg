@@ -1,11 +1,11 @@
 package sqlitedb;
 
 public enum DataType {
-	NULL("null"),
-	INTEGER("integer"),
-	REAL("real"),
-	TEXT("text"),
-	BLOB("blob");
+	NULL("NULL"),
+	INTEGER("INTEGER"),
+	REAL("REAL"),
+	TEXT("TEXT"),
+	BLOB("BLOB");
 	
 	private String stringValue;
 	

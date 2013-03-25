@@ -20,6 +20,7 @@ public class SMSRPG {
 		Log.showLog(true);
 		Log.showDebug(true);
 		Log.showError(true);
+		Log.showAlert(true);
 		
 		//Take out reset database
 		SQLiteDatabase.init("smsrpg.db", "db");

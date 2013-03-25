@@ -1,9 +1,9 @@
 package sqlitedb;
 
 public enum ColumnRule {
-	PRIMARY_KEY("primary key"),
-	NOT_NULL("not null"),
-	UNIQUE("unique");
+	PRIMARY_KEY("PRIMARY KEY"),
+	NOT_NULL("NOT NULL"),
+	UNIQUE("UNIQUE");
 	
 	private String stringValue;
 	

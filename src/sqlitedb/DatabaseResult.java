@@ -24,6 +24,7 @@ public class DatabaseResult {
 			while (rs.next()) {
 				// Fill in the column names for the columns hash the first time
 				if (!columnsInitialized) {
+					columnsInitialized = true;
 					for (int i = 0; i < rsmd.getColumnCount(); i++) {
 						columns.put(rsmd.getColumnName(i+1), new Column(rsmd.getColumnName(i+1)));
 					}
@@ -63,7 +64,11 @@ public class DatabaseResult {
 		return columns.isEmpty() || rows.isEmpty();
 	}
 	
-	public int size() {
+	public int numColumns() {
+		return columns.size();
+	}
+	
+	public int numRows() {
 		return rows.size();
 	}
 	

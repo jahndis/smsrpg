@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.List;
 
 import log.Log;
 
@@ -64,6 +65,10 @@ public final class SQLiteDatabase {
 		DatabaseResult result = null;
 
     try {
+    	if (!isConnected()) {
+				throw new SQLException("Database connection is not open");
+			}
+    	
     	preparedStatement = connection.prepareStatement(statement);   
     	
       for (int i = 0; i < values.length; i++) {
@@ -89,6 +94,10 @@ public final class SQLiteDatabase {
 		PreparedStatement preparedStatement = null;
 		
     try {
+    	if (!isConnected()) {
+				throw new SQLException("Database connection is not open");
+			}
+    	
       preparedStatement = connection.prepareStatement(statement);
       
       for (int i = 0; i < values.length; i++) {
@@ -122,12 +131,15 @@ public final class SQLiteDatabase {
 		}
 	}
 	
-	
 	public static boolean hasTable(String tableName) {
 		ResultSet rs = null;
 		boolean hasTable = false;
 		
 		try {
+			if (!isConnected()) {
+				throw new SQLException("Database connection is not open");
+			}
+			
 			DatabaseMetaData metadata = connection.getMetaData();
 			rs = metadata.getTables(null, null, "%", null);
 			
@@ -147,10 +159,28 @@ public final class SQLiteDatabase {
 		return hasTable;
 	}
 	
+	public static void dropTable(TableDefinition tableDefinition) {
+		try {
+			if (!hasTable(tableDefinition.getName())) {
+				throw new SQLException("Table " + tableDefinition.getName() + " does not exist");
+			}
+			
+			Table table = new Table(tableDefinition);
+			table.drop();
+		} catch (SQLException e) {
+			Log.error("Error dropping table in database");
+			e.printStackTrace();
+		}
+	}
+	
 	public static void dropAllTables() {
 		ResultSet rs = null;
 		
 		try {
+			if (!isConnected()) {
+				throw new SQLException("Database connection is not open");
+			}
+			
 			DatabaseMetaData metadata = connection.getMetaData();
 			rs = metadata.getTables(null, null, "%", null);
 			
@@ -170,6 +200,16 @@ public final class SQLiteDatabase {
 		} finally {
 			closeResultSet(rs);
 		}
+	}
+	
+	public static void insertIntoTable(TableDefinition tableDefinition, Row row) {
+		Table table = new Table(tableDefinition);
+		table.insert(row);
+	}
+	
+	public static void insertIntoTable(TableDefinition tableDefinition, List<Row> rows) {
+		Table table = new Table(tableDefinition);
+		table.insert(rows);
 	}
 	
 	

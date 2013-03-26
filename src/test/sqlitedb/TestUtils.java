@@ -1,4 +1,4 @@
-package test;
+package test.sqlitedb;
 
 import java.io.File;
 

@@ -1,4 +1,4 @@
-package test;
+package test.sqlitedb;
 
 import static org.junit.Assert.*;
 

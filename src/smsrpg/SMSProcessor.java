@@ -5,7 +5,7 @@ import log.Log;
 public class SMSProcessor {
 	
 	public static String processMessage(Player player, World world, String message) {
-		Log.log("PROCESSING: " + message + " from " + player.getContact().getNumber());
+		Log.log("PROCESSING: " + message + " from " + player.getNumber());
 		
 		player.performAction(message, world);
 		
@@ -19,7 +19,7 @@ public class SMSProcessor {
 		//and return them in a formatted string.
 		String message = "";
 		
-		switch (player.getState().peek()) {
+		switch (player.getState().getCurrent()) {
 		case NOT_REGISTERED:
 			message = "Text JOIN to join the game!";
 			break;

@@ -12,7 +12,7 @@ public class SMSResponder {
 		try {
 			Log.log("RESPONDING: " + response);
 			
-			voice.sendSMS(player.getContact().getNumber(), response);
+			voice.sendSMS(player.getNumber(), response);
 			
 		} catch (IOException e) {
 			Log.error("Error sending response to player");

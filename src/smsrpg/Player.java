@@ -1,6 +1,5 @@
 package smsrpg;
 
-import java.util.Stack;
 import java.util.UUID;
 
 import sqlitedb.ColumnDefinition;
@@ -28,7 +27,7 @@ public class Player {
 	
 	private Contact contact;
 	private String userName;
-	private Stack<PlayerState> state;
+	private State<PlayerState> state;
 	private Location location;
 	
 	public Player(Contact contact) {
@@ -42,7 +41,8 @@ public class Player {
 			loadInfo();
 		} else {
 			this.userName = generateRandomUserName();
-			this.state = new Stack<PlayerState>();
+//			this.state = new Stack<PlayerState>();
+			this.state = new State<PlayerState>();
 			this.state.push(PlayerState.NOT_REGISTERED);
 			this.location = null;
 		}
@@ -60,7 +60,7 @@ public class Player {
 		//Need to process arbitrary input first to make sure the arbitrary input
 		//does not coincide with any of the key words
 		boolean arbitraryInputProcessed = true;
-		switch (state.peek()) {
+		switch (state.getCurrent()) {
 		case JOINING:
 			//Player is entering their user name
 			if (!userNameIsTaken(message)){
@@ -89,7 +89,7 @@ public class Player {
 		if (!arbitraryInputProcessed) {
 			switch (message.toUpperCase()) {
 			case "JOIN":
-				switch (state.peek()) {
+				switch (state.getCurrent()) {
 					case NOT_REGISTERED:
 						state.pop();
 						state.push(PlayerState.JOINING);
@@ -103,7 +103,7 @@ public class Player {
 				state.push(PlayerState.LEAVING);
 				break;
 			case "YES":
-				switch (state.peek()) {
+				switch (state.getCurrent()) {
 				case LEAVING:
 					state.pop();
 					state.push(PlayerState.LEFT);
@@ -115,7 +115,7 @@ public class Player {
 				}
 				break;
 			case "NO":
-				switch (state.peek()) {
+				switch (state.getCurrent()) {
 				case LEAVING:
 					state.pop();
 					break;
@@ -129,13 +129,9 @@ public class Player {
 			}
 		}
 		
-		if (state.peek() != PlayerState.NOT_REGISTERED) {
+		if (state.getCurrent() != PlayerState.NOT_REGISTERED) {
 			saveInfo();
 		}
-	}
-	
-	public Contact getContact() {
-		return contact;
 	}
 	
 	public String getNumber() {
@@ -150,7 +146,7 @@ public class Player {
 		return userName;
 	}
 	
-	public Stack<PlayerState> getState() {
+	public State<PlayerState> getState() {
 		return state;
 	}
 	
@@ -173,7 +169,7 @@ public class Player {
 		
 		SQLiteDatabase.openConnection();
 		String statement = "INSERT INTO players (id, name, phone_number, state) VALUES (?, ?, ?, ?)";
-		Object[] values = { generateRandomID(), userName, getNumber(), stateStackToStateText(state) };
+		Object[] values = { generateRandomID(), userName, getNumber(), state.toString() };
 		SQLiteDatabase.executeUpdate(statement, values);
 		SQLiteDatabase.closeConnection();
 	}
@@ -189,6 +185,22 @@ public class Player {
 		Object[] values = { getNumber() };
 		SQLiteDatabase.executeUpdate(statement, values);
 		SQLiteDatabase.closeConnection();
+	}
+	
+	private boolean isRegistered() {
+		boolean registered = false;
+		
+		SQLiteDatabase.openConnection();
+		String statement = "SELECT phone_number FROM players WHERE phone_number = ?";
+		Object[] values = { getNumber() };
+		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
+		
+		if (!result.isEmpty()) {
+			registered = true;
+		}
+		SQLiteDatabase.closeConnection();
+		
+		return registered;
 	}
 	
 	private static boolean playersTableIsCreated() {
@@ -214,36 +226,21 @@ public class Player {
 		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
 		
 		if (!result.isEmpty()) {
-			this.userName = (String) result.getRow(0).getValue("name");
-			this.state = stateTextToStateStack((String) result.getRow(0).getValue("state"));
+			userName = (String) result.getRow(0).getValue("name");
+			state = new State<PlayerState>();
+			state.parseString((String) result.getRow(0).getValue("state"), PlayerState.class);
 		}	
 		SQLiteDatabase.closeConnection();
 	}
 	
 	private void saveInfo() {
-		Log.log("Saving player info: " + userName + " " + stateStackToStateText(state) + " " + getNumber());
+		Log.log("Saving player info: " + userName + " " + state.toString() + " " + getNumber());
 		
 		SQLiteDatabase.openConnection();
 		String statement = "UPDATE players SET name = ?, state = ? WHERE phone_number = ?";
-		Object[] values = { userName, stateStackToStateText(state), getNumber() };
+		Object[] values = { userName, state.toString(), getNumber() };
 		SQLiteDatabase.executeUpdate(statement, values);
 		SQLiteDatabase.closeConnection();
-	}
-	
-	private boolean isRegistered() {
-		boolean registered = false;
-		
-		SQLiteDatabase.openConnection();
-		String statement = "SELECT phone_number FROM players WHERE phone_number = ?";
-		Object[] values = { getNumber() };
-		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
-		
-		if (!result.isEmpty()) {
-			registered = true;
-		}
-		SQLiteDatabase.closeConnection();
-		
-		return registered;
 	}
 	
 	private static String generateRandomID() {
@@ -268,34 +265,6 @@ public class Player {
 		SQLiteDatabase.closeConnection();
 		
 		return nameTaken;
-	}
-	
-	private Stack<PlayerState> stateTextToStateStack(String stateText) {
-		Stack<PlayerState> stateStack = new Stack<PlayerState>();
-		String[] states = stateText.split(">");
-		
-		for (String state : states) {
-			stateStack.push(PlayerState.valueOf(state));
-		}
-		
-		return stateStack;
-	}
-	
-	private String stateStackToStateText(Stack<PlayerState> inputStack) {
-		@SuppressWarnings("unchecked")
-		Stack<PlayerState> stateStack = (Stack<PlayerState>) inputStack.clone();
-		StringBuilder stateText = new StringBuilder();
-		
-		while (!stateStack.isEmpty()) {
-			//Insert the delimiter only if this is not the first state entered
-			if (stateText.length() > 0) {
-				stateText.insert(0, ">");
-			}
-			
-			stateText.insert(0, stateStack.pop().toString());
-		}
-
-		return stateText.toString();
 	}
 
 }

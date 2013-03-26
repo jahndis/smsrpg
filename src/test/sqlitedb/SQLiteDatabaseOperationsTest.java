@@ -75,6 +75,8 @@ public class SQLiteDatabaseOperationsTest {
 	public void testDropAllTables() {
 		SQLiteDatabase.executeUpdate("CREATE TABLE test (id INTEGER)");
 		
+		assertTrue("Database should have test table", SQLiteDatabase.hasTable("test"));
+		
 		SQLiteDatabase.dropAllTables();
 		
 		assertFalse("Database should not have test table", SQLiteDatabase.hasTable("test"));

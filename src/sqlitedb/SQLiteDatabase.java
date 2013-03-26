@@ -33,6 +33,10 @@ public final class SQLiteDatabase {
 			if (connection == null || connection.isClosed()) {
 				connection = DriverManager.getConnection("jdbc:sqlite:" + location + "/" + name);
 			}
+			
+			if (connection == null) {
+				throw new SQLException("Unable to create connection to database");
+			}
 		} catch (SQLException e) {
 			Log.error("Error getting SQL database connection");
 			e.printStackTrace();
@@ -41,7 +45,9 @@ public final class SQLiteDatabase {
 	
 	public static void closeConnection() {
 		try {
-			connection.close();
+			if (connection != null) {
+				connection.close();
+			}
 		} catch (SQLException e) {
 			Log.error("Error closing SQL database connection");
 			e.printStackTrace();

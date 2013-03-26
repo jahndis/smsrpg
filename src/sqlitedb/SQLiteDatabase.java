@@ -10,9 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.List;
 
 import log.Log;
+
 
 public final class SQLiteDatabase {
 	
@@ -200,16 +200,6 @@ public final class SQLiteDatabase {
 		} finally {
 			closeResultSet(rs);
 		}
-	}
-	
-	public static void insertIntoTable(TableDefinition tableDefinition, Row row) {
-		Table table = new Table(tableDefinition);
-		table.insert(row);
-	}
-	
-	public static void insertIntoTable(TableDefinition tableDefinition, List<Row> rows) {
-		Table table = new Table(tableDefinition);
-		table.insert(rows);
 	}
 	
 	

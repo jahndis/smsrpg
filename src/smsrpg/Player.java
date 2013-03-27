@@ -2,6 +2,11 @@ package smsrpg;
 
 import java.util.UUID;
 
+import smsrpg.action.ArbitraryAction;
+import smsrpg.action.JoinAction;
+import smsrpg.action.LeaveAction;
+import smsrpg.action.NoAction;
+import smsrpg.action.YesAction;
 import sqlitedb.ColumnDefinition;
 import sqlitedb.ColumnRule;
 import sqlitedb.DataType;
@@ -41,7 +46,6 @@ public class Player {
 			loadInfo();
 		} else {
 			this.userName = generateRandomUserName();
-//			this.state = new Stack<PlayerState>();
 			this.state = new State<PlayerState>();
 			this.state.push(PlayerState.NOT_REGISTERED);
 			this.location = null;
@@ -57,93 +61,81 @@ public class Player {
 			throw new IllegalStateException("The player's state stack is empty.");
 		}
 		
-		//Need to process arbitrary input first to make sure the arbitrary input
-		//does not coincide with any of the key words
-		boolean arbitraryInputProcessed = true;
-		switch (state.getCurrent()) {
-		case JOINING:
-			//Player is entering their user name
-			if (!userNameIsTaken(message)){
-				userName = message;
-				state.pop();
-				state.push(PlayerState.NEW);
-			} else {
-				state.pop();
-				state.push(PlayerState.NAME_TAKEN);
-			}
-			break;
-		case NAME_TAKEN:
-			//Player is entering a different user name
-			if (!userNameIsTaken(message)){
-				userName = message;
-				state.pop();
-				state.push(PlayerState.NEW);
-			}
-			break;
-		default:
-			arbitraryInputProcessed = false;
-			break;
-		}
+		// Need to process arbitrary input first to make sure the arbitrary input
+		// does not coincide with any of the key words (i.e. the user chooses their
+		// name to be a keyword)
+		ArbitraryAction arbitraryAction = new ArbitraryAction(message);
+		arbitraryAction.execute(this, world);
 		
 		//Process normal key words
-		if (!arbitraryInputProcessed) {
+		if (!arbitraryAction.isInputArbitrary()) {
 			switch (message.toUpperCase()) {
 			case "JOIN":
-				switch (state.getCurrent()) {
-					case NOT_REGISTERED:
-						state.pop();
-						state.push(PlayerState.JOINING);
-						register();
-						break;
-					default:
-						break;
-				}
+				new JoinAction().execute(this, world);
 				break;
 			case "LEAVE":
-				state.push(PlayerState.LEAVING);
+				new LeaveAction().execute(this, world);
 				break;
 			case "YES":
-				switch (state.getCurrent()) {
-				case LEAVING:
-					state.pop();
-					state.push(PlayerState.LEFT);
-					unregister();
-					break;
-				default:
-					Log.log("User responded 'Yes' to nothing. Just leave state same and resend.");
-					break;
-				}
+				new YesAction().execute(this, world);
 				break;
 			case "NO":
-				switch (state.getCurrent()) {
-				case LEAVING:
-					state.pop();
-					break;
-				default:
-					Log.log("User responded 'Yes' to nothing. Just leave state same and resend.");
-					break;
-				}
+				new NoAction().execute(this, world);
 			default:
 				Log.log("Invalid user input. Just leave state same and resend.");
 				break;
 			}
 		}
 		
-		if (state.getCurrent() != PlayerState.NOT_REGISTERED) {
+		// Save registered players
+		if (isRegistered()) {
 			saveInfo();
 		}
+	}
+	
+	public void register() {
+		Log.log("Registering player");
+		if (!playersTableIsCreated()) {
+			createPlayerTableInDatabase();
+		}
+		
+		SQLiteDatabase.openConnection();
+		String statement = "INSERT INTO players (id, name, phone_number, state) VALUES (?, ?, ?, ?)";
+		Object[] values = { generateRandomID(), userName, getNumber(), state.toString() };
+		SQLiteDatabase.executeUpdate(statement, values);
+		SQLiteDatabase.closeConnection();
+	}
+	
+	public void unregister() {
+		Log.log("Unregistering player " + userName);
+		
+		SQLiteDatabase.openConnection();
+		String statement = "DELETE FROM players WHERE phone_number = ?";
+		Object[] values = { getNumber() };
+		SQLiteDatabase.executeUpdate(statement, values);
+		SQLiteDatabase.closeConnection();
+	}
+	
+	public static boolean userNameIsTaken(String name) {
+		SQLiteDatabase.openConnection();
+		String statement = "SELECT name FROM players WHERE name = ?";
+		Object[] values = { name };
+		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
+		SQLiteDatabase.closeConnection();
+
+		return !result.isEmpty();
 	}
 	
 	public String getNumber() {
 		return contact.getNumber();
 	}
 	
-	public String getOptionsString() {
-		return "Choose an action:\n";
-	}
-	
 	public String getUserName() {
 		return userName;
+	}
+	
+	public void setUserName(String userName) {
+		this.userName = userName;
 	}
 	
 	public State<PlayerState> getState() {
@@ -161,46 +153,14 @@ public class Player {
 	
 	/* Private methods */
 	
-	private void register() {
-		Log.log("Registering player");
-		if (!playersTableIsCreated()) {
-			createPlayerTableInDatabase();
-		}
-		
-		SQLiteDatabase.openConnection();
-		String statement = "INSERT INTO players (id, name, phone_number, state) VALUES (?, ?, ?, ?)";
-		Object[] values = { generateRandomID(), userName, getNumber(), state.toString() };
-		SQLiteDatabase.executeUpdate(statement, values);
-		SQLiteDatabase.closeConnection();
-	}
-	
-	private void unregister() {
-		Log.log("Unregistering player " + userName);
-		if (!playersTableIsCreated()) {
-			createPlayerTableInDatabase();
-		}
-		
-		SQLiteDatabase.openConnection();
-		String statement = "DELETE FROM players WHERE phone_number = ?";
-		Object[] values = { getNumber() };
-		SQLiteDatabase.executeUpdate(statement, values);
-		SQLiteDatabase.closeConnection();
-	}
-	
 	private boolean isRegistered() {
-		boolean registered = false;
-		
 		SQLiteDatabase.openConnection();
 		String statement = "SELECT phone_number FROM players WHERE phone_number = ?";
 		Object[] values = { getNumber() };
 		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
-		
-		if (!result.isEmpty()) {
-			registered = true;
-		}
 		SQLiteDatabase.closeConnection();
-		
-		return registered;
+
+		return !result.isEmpty();
 	}
 	
 	private static boolean playersTableIsCreated() {
@@ -224,13 +184,13 @@ public class Player {
 		String statement = "SELECT name, state FROM players WHERE phone_number = ?";
 		Object[] values = { getNumber() };
 		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
+		SQLiteDatabase.closeConnection();
 		
 		if (!result.isEmpty()) {
 			userName = (String) result.getRow(0).getValue("name");
 			state = new State<PlayerState>();
 			state.parseString((String) result.getRow(0).getValue("state"), PlayerState.class);
 		}	
-		SQLiteDatabase.closeConnection();
 	}
 	
 	private void saveInfo() {
@@ -249,22 +209,6 @@ public class Player {
 	
 	private static String generateRandomUserName() {
 		return UUID.randomUUID().toString();
-	}
-	
-	private static boolean userNameIsTaken(String name) {
-		boolean nameTaken = false;
-		
-		SQLiteDatabase.openConnection();
-		String statement = "SELECT name FROM players WHERE name = ?";
-		Object[] values = { name };
-		DatabaseResult result = SQLiteDatabase.executeQuery(statement, values);
-		
-		if (!result.isEmpty()) {
-			nameTaken = true;
-		}
-		SQLiteDatabase.closeConnection();
-		
-		return nameTaken;
 	}
 
 }

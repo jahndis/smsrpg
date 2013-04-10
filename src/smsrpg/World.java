@@ -2,10 +2,40 @@ package smsrpg;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.NoSuchElementException;
 
 public class World {
 
 	private ArrayList<Location> locations;
+	
+	public static World createWorld() {
+		World world = new World();
+		
+		// Create main locations
+		world.addLocation("A");
+		world.addLocation("B");
+		world.addLocation("C");
+		world.addLocation("D");
+		world.addLocation("E");
+		
+		// Create path locations
+		world.addLocation("a-b");
+		world.addLocation("b-c");
+		world.addLocation("c-d");
+		world.addLocation("d-e");
+		world.addLocation("e-a");
+		world.addLocation("c-e");
+		
+		// Connect the locations
+		world.connectLocationsWithLocation("a-b", "A", "B");
+		world.connectLocationsWithLocation("b-c", "B", "C");
+		world.connectLocationsWithLocation("c-d", "C", "D");
+		world.connectLocationsWithLocation("d-e", "D", "E");
+		world.connectLocationsWithLocation("e-a", "E", "A");
+		world.connectLocationsWithLocation("c-e", "C", "E");
+		
+		return world;
+	}
 	
 	public World() {
 		locations = new ArrayList<Location>();
@@ -18,40 +48,28 @@ public class World {
 			}
 		}
 		
-		return null;
+		throw new NoSuchElementException("Location '" + name + "' does not exist in the world");
 	}
 	
 	public void addLocation(String name) {
 		locations.add(new Location(name));
 	}	
 	
-	public void connectLocations(Location location1, Location location2) {
-			location1.connectToLocation(location2);
+	public void connectLocations(String location1Name, String location2Name) {
+		getLocation(location1Name).connectToLocation(getLocation(location2Name));
 	}
 	
-	public void connectLocations(String location1, String location2) {
-		connectLocations(getLocation(location1), getLocation(location2));
-	}
-	
-	public void connectLocationsWithLocation(Location connector, Location location1, Location ...locations) {
-		connectLocations(location1, connector);
-		for (Location location : locations) {
-			connectLocations(location, connector);
+	public void connectLocationsWithLocation(String connectorName, String location1Name, String ...locationNames) {
+		connectLocations(location1Name, connectorName);
+		for (String locationName : locationNames) {
+			connectLocations(locationName, connectorName);
 		}
 	}
 	
-	public void connectLocationsWithLocation(String connector, String location1, String ...locations) {
-		connectLocations(location1, connector);
-		for (String location : locations) {
-			connectLocations(location, connector);
-		}
-	}
-	
-	public ArrayList<Location> getPath(String location1, String location2) {
-		return getPath(getLocation(location1), getLocation(location2));
-	}
-	
-	public ArrayList<Location> getPath(Location source, Location target) {
+	public ArrayList<Location> getPath(String sourceName, String targetName) {
+		Location source = getLocation(sourceName);
+		Location target = getLocation(targetName);
+		
 		ArrayList<Location> path = new ArrayList<Location>();
 		
 		ArrayList<String> N = new ArrayList<String>();
@@ -113,7 +131,15 @@ public class World {
 			tracer = P.get(tracer);
 		}
 		
+		if (path.size() == 1) {
+			return null;
+		}
+		
 		return path;
+	}
+	
+	public ArrayList<Location> getLocations() {
+		return locations;
 	}
 	
 }

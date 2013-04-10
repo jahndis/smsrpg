@@ -2,7 +2,6 @@ package smsrpg.action;
 
 import smsrpg.Player;
 import smsrpg.PlayerState;
-import smsrpg.World;
 
 public class ArbitraryAction extends PlayerAction {
 	
@@ -16,7 +15,7 @@ public class ArbitraryAction extends PlayerAction {
 	}
 
 	@Override
-	public void execute(Player player, World world) {
+	public void execute(Player player) {
 		switch (player.getState().getCurrent()) {
 		case JOINING:
 			//Player is entering their user name

@@ -20,15 +20,19 @@ public class Location {
 			if (!adjacentLocations.contains(location)) {
 				adjacentLocations.add(location);
 			} else {
-				Log.log("Location " + location.name + " is already connected to " + name);
+				Log.warn("Location " + location.name + " is already connected to " + name);
 			}
 			
 			if (!location.adjacentLocations.contains(this)) {
 				location.adjacentLocations.add(this);
 			} else {
-				Log.log("Location " + this + " is already connected to " + location.name);
+				Log.warn("Location " + this + " is already connected to " + location.name);
 			}
 		}
+	}
+	
+	public String toString() {
+		return name;
 	}
 	
 	public String getName() {

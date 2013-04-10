@@ -4,17 +4,17 @@ import log.Log;
 
 public class SMSProcessor {
 	
-	public static String processMessage(Player player, World world, String message) {
+	public static String processMessage(Player player, String message) {
 		Log.log("PROCESSING: " + message + " from " + player.getNumber());
 		
-		player.performAction(message, world);
+		player.performAction(message);
 		
-		String response = buildResponse(player, world);
+		String response = buildResponse(player);
 		
 		return response;
 	}
 	
-	private static String buildResponse(Player player, World world) {
+	private static String buildResponse(Player player) {
 		//Based on the player's state, determine what options to display to the player
 		//and return them in a formatted string.
 		String message = "";

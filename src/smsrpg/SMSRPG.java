@@ -16,21 +16,16 @@ import com.techventus.server.voice.datatypes.records.SMSThread;
 public class SMSRPG {
 
 	public static void main(String[] args) {
-		//Set up logger
-		Log.showLog(true);
-		Log.showDebug(true);
-		Log.showError(true);
-		Log.showAlert(true);
+		// Set up logger
+		Log.showAll(true);
 		
-		//Take out reset database
+		// Take out reset database
 		SQLiteDatabase.init("smsrpg.db", "db");
 		SQLiteDatabase.openConnection();
 		SQLiteDatabase.dropAllTables();
 		SQLiteDatabase.closeConnection();
 		
-		//System.exit(0);
-		
-		//Get the user name and password
+		// Get the user name and password
 		String username = "";
 		String password = "";
 
@@ -38,9 +33,9 @@ public class SMSRPG {
 			username = args[0];
 			password = args[1];
 		} else {
-			//username = JOptionPane.showInputDialog(null, "Please enter your username:");
+			// username = JOptionPane.showInputDialog(null, "Please enter your username:");
 			username = "ravensilentstar";
-			//password = JOptionPane.showInputDialog(null, "Please enter your password:");
+			// password = JOptionPane.showInputDialog(null, "Please enter your password:");
 			password = "Sup3rN0vA";
 		}
 		
@@ -48,25 +43,24 @@ public class SMSRPG {
 			
 		Collection<SMSThread> threads;
 		Player player;
-		World world = createWorld();
 		
 		boolean running = true;
 		
 		while (running) {
-			//Wait for some messages
+			// Wait for some messages
 			threads = SMSListener.listen(voice);
 			
-			//Process the messages
+			// Process the messages
 			for (SMSThread thread : threads) {
 				player = new Player(thread.getContact());
 				
 				Collection<SMS> smses = thread.getAllSMS();
 				for (SMS sms : smses) {
-					String response = SMSProcessor.processMessage(player, world, sms.getContent());
+					String response = SMSProcessor.processMessage(player, sms.getContent());
 					SMSResponder.send(voice, response, player);
 				}
 				
-				//Delete the messages
+				// Delete the messages
 				try {
 					voice.deleteMessage(thread.getId());
 				} catch (IOException e) {
@@ -94,35 +88,6 @@ public class SMSRPG {
 		}
 		
 		return voice;
-	}
-	
-	public static World createWorld() {
-		World world = new World();
-		
-		//Create main locations
-		world.addLocation("A");
-		world.addLocation("B");
-		world.addLocation("C");
-		world.addLocation("D");
-		world.addLocation("E");
-		
-		//Create path locations
-		world.addLocation("a-b");
-		world.addLocation("b-c");
-		world.addLocation("c-d");
-		world.addLocation("d-e");
-		world.addLocation("e-a");
-		world.addLocation("c-e");
-		
-		//Connect the locations
-		world.connectLocationsWithLocation("a-b", "A", "B");
-		world.connectLocationsWithLocation("b-c", "B", "C");
-		world.connectLocationsWithLocation("c-d", "C", "D");
-		world.connectLocationsWithLocation("d-e", "D", "E");
-		world.connectLocationsWithLocation("e-a", "E", "A");
-		world.connectLocationsWithLocation("c-e", "C", "E");
-		
-		return world;
 	}
 
 }

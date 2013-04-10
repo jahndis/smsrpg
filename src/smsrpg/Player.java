@@ -56,7 +56,7 @@ public class Player {
 	 * Figure out, based on the player's state, what the action specified does.
 	 * Then, change the player's state to reflect the changes that were made.
 	 */
-	public void performAction(String message, World world) {
+	public void performAction(String message) {
 		if (state.isEmpty()) {
 			throw new IllegalStateException("The player's state stack is empty.");
 		}
@@ -65,22 +65,23 @@ public class Player {
 		// does not coincide with any of the key words (i.e. the user chooses their
 		// name to be a keyword)
 		ArbitraryAction arbitraryAction = new ArbitraryAction(message);
-		arbitraryAction.execute(this, world);
+		arbitraryAction.execute(this);
 		
 		//Process normal key words
 		if (!arbitraryAction.isInputArbitrary()) {
 			switch (message.toUpperCase()) {
 			case "JOIN":
-				new JoinAction().execute(this, world);
+				new JoinAction().execute(this);
 				break;
 			case "LEAVE":
-				new LeaveAction().execute(this, world);
+				new LeaveAction().execute(this);
+				Log.debug("TEST");
 				break;
 			case "YES":
-				new YesAction().execute(this, world);
+				new YesAction().execute(this);
 				break;
 			case "NO":
-				new NoAction().execute(this, world);
+				new NoAction().execute(this);
 			default:
 				Log.log("Invalid user input. Just leave state same and resend.");
 				break;

@@ -6,6 +6,7 @@ public class Log {
 	
 	private static boolean showLog = false;
 	private static boolean showDebug = false;
+	private static boolean showWarning = false;
 	private static boolean showError = false;
 	private static boolean showAlert = false;
 	
@@ -18,6 +19,12 @@ public class Log {
 	public static void debug(Object message) {
 		if (showDebug) {
 			doMessage("DEBUG: " + message);
+		}
+	}
+	
+	public static void warn(Object message) {
+		if (showWarning) {
+			doMessage("WARNING: " + message);
 		}
 	}
 	
@@ -45,6 +52,10 @@ public class Log {
 		Log.showDebug = showDebug;
 	}
 	
+	public static void showWarning(boolean showWarning) {
+		Log.showWarning = showWarning;
+	}
+	
 	public static void showError(boolean showError) {
 		Log.showError = showError;
 	}
@@ -56,6 +67,7 @@ public class Log {
 	public static void showAll(boolean show) {
 		Log.showLog = show;
 		Log.showDebug = show;
+		Log.showWarning = show;
 		Log.showError = show;
 		Log.showAlert = show;
 	}

@@ -125,5 +125,4 @@ public class PlayerTest {
 		assertTrue("User name 'user' should be taken", Player.userNameIsTaken(userName));
 	}
 
-
 }
